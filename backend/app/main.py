@@ -1,7 +1,9 @@
 
 from fastapi import FastAPI
-
 from app.api.router import router
+from app.models.user import User
+from app.models.note import Note
+
 
 # creates our FastAPI application.
 app = FastAPI(
@@ -13,18 +15,3 @@ app = FastAPI(
 
 app.include_router(router)
 
-
-
-
-
-
-
-
-"""
-# creates our first API endpoint.
-@app.get("/")
-def root():
-    return {
-       " message : StudyMet AI API is running"                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              
-    }
-""" 
