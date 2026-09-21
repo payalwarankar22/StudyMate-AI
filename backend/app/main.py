@@ -1,8 +1,7 @@
 
 from fastapi import FastAPI
 from app.api.router import router
-from app.models.user import User
-from app.models.note import Note
+
 
 
 # creates our FastAPI application.

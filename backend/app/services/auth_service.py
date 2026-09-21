@@ -45,7 +45,7 @@ class AuthService:
     def login_user(self, db: Session, email: str, password: str):
 
         user = db.query(User).filter(User.email == email).first()
-        print("User found:", User is not None)
+  
 
         if not user:
            raise HTTPException(
