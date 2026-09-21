@@ -61,3 +61,6 @@ uvicorn==0.52.0
 watchfiles==1.2.0
 
 websockets==16.1.1
+
+google-genai==2.24.0
+
