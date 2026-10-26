@@ -1,15 +1,20 @@
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
-from pathlib import Path
-import tempfile
+
+import logging
 import os
+import tempfile
+from pathlib import Path
+
+from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
 
 from app.ai.transcription_service import TranscriptionService
 from app.dependencies import get_current_user
 
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(
     prefix="/audio",
-    tags=["Audio"]
+    tags=["Audio"],
 )
 
 
@@ -19,95 +24,98 @@ ALLOWED_AUDIO_EXTENSIONS = {
     ".wav",
     ".aac",
     ".ogg",
-    ".flac"
+    ".flac",
 }
 
 MAX_FILE_SIZE = 100 * 1024 * 1024  # 100 MB
+CHUNK_SIZE = 1024 * 1024  # 1 MB
 
 
 @router.post("/transcribe")
 async def transcribe_audio(
     file: UploadFile = File(...),
-    current_user=Depends(get_current_user)
+    current_user=Depends(get_current_user),
 ):
-
-    # 1. Validate filename
-    if not file.filename:
-        raise HTTPException(
-            status_code=400,
-            detail="Audio file is required"
-        )
-
-    # 2. Validate file extension
-    suffix = Path(file.filename).suffix.lower()
-
-    if suffix not in ALLOWED_AUDIO_EXTENSIONS:
-        raise HTTPException(
-            status_code=400,
-            detail="Unsupported audio file format"
-        )
-
     temp_file_path = None
-    total_size = 0
 
     try:
+        # 1. Validate filename
+        if not file.filename:
+            raise HTTPException(
+                status_code=400,
+                detail="Audio file is required",
+            )
 
-        # 3. Create temporary file
+        # 2. Validate file extension
+        suffix = Path(file.filename).suffix.lower()
+
+        if suffix not in ALLOWED_AUDIO_EXTENSIONS:
+            raise HTTPException(
+                status_code=400,
+                detail="Unsupported audio file format",
+            )
+
+        # 3. Create temporary file and copy upload in chunks
         with tempfile.NamedTemporaryFile(
+            mode="wb",
             delete=False,
-            suffix=suffix
+            suffix=suffix,
         ) as temp_file:
-
             temp_file_path = temp_file.name
+            total_size = 0
 
-            # 4. Copy file in chunks
             while True:
-
-                chunk = await file.read(1024 * 1024)
+                chunk = await file.read(CHUNK_SIZE)
 
                 if not chunk:
                     break
 
                 total_size += len(chunk)
 
-                # 5. Validate file size
+                # 4. Enforce the maximum file size
                 if total_size > MAX_FILE_SIZE:
                     raise HTTPException(
                         status_code=413,
-                        detail="Audio file is too large. Maximum allowed size is 100 MB."
+                        detail=(
+                            "Audio file is too large. "
+                            "Maximum allowed size is 100 MB."
+                        ),
                     )
 
                 temp_file.write(chunk)
 
-        # 6. Transcribe audio
+        # 5. Transcribe audio
         transcription_service = TranscriptionService()
 
         transcript = transcription_service.transcribe_audio(
-            audio_path=temp_file_path
+            audio_path=temp_file_path,
         )
 
-        # 7. Return transcript
+        # 6. Return transcript
         return {
             "filename": file.filename,
-            "transcript": transcript
+            "transcript": transcript,
         }
 
     except HTTPException:
         raise
 
-    except Exception as e:
-        print(
-            f"Audio transcription error: "
-            f"{type(e).__name__}: {e}"
-        )
+    except Exception:
+        # Log the failure without returning internal details to the client
+        logger.exception("Audio transcription failed")
 
         raise HTTPException(
             status_code=502,
-            detail="Audio transcription service failed."
-        )
+            detail="Audio transcription service failed.",
+        ) from None
 
     finally:
-
-        # 8. Always delete temporary file
-        if temp_file_path and os.path.exists(temp_file_path):
-            os.remove(temp_file_path)
+        try:
+            # 7. Delete the temporary file
+            if temp_file_path and os.path.exists(temp_file_path):
+                os.remove(temp_file_path)
+        except OSError:
+            logger.exception("Failed to delete temporary audio file")
+        finally:
+            # 8. Close the uploaded file
+            await file.close()
