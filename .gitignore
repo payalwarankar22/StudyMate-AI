@@ -1,11 +1,58 @@
+
+# Virtual environments
 .venv/
+venv/
+env/
+
+# Python cache files
 __pycache__/
-*.pyc
+*.py[cod]
+*.pyo
+
+# Environment variables and secrets
 .env
+.env.*
+!.env.example
+
+# Log files
 *.log
+
+# Local databases
 *.db
+*.sqlite
+*.sqlite3
+
+# Node.js
 node_modules/
 dist/
 build/
+
+# Editor and operating system files
 .vscode/
+.idea/
 .DS_Store
+Thumbs.db
+
+# Python test and coverage artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Audio recordings and test audio files
+*.m4a
+*.mp3
+*.wav
+*.aac
+*.ogg
+*.flac
+
+# Generated transcripts and processing reports
+*_transcript.txt
+transcript_*.txt
+normalization_checkpoint.json
+normalization_validation_report.txt
+transcript_comparison_report.txt
+
+# Temporary files
+*.tmp
+*.temp
